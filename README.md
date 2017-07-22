@@ -61,3 +61,5 @@ are in the right path.
 java -jar target/swagger-bundler-0.0.1.jar folder of swagger.yaml
 ```
 
+Another way to run the bundler is from IDE. Just set the parameter and you can easily
+debug into it.
