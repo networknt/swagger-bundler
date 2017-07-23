@@ -19,7 +19,7 @@ public class Bundler {
     static Map<String, Object> definitions = null;
 
     public static void main(String ... argv) {
-        System.out.println("argv[0] = " + argv[0]);
+        //System.out.println("argv[0] = " + argv[0]);
         if(argv[0] != null) {
             folder = argv[0];
             // The input parameter is the folder that contains swagger.yaml and
@@ -143,6 +143,7 @@ public class Bundler {
                         if("$ref".equals(entryPointer.getKey())) {
                             String pointer = (String)entryPointer.getValue();
                             String refKey = pointer.substring(2);
+                            //System.out.println("refKey = " + refKey);
                             entryProp.setValue(refs.get(refKey));
                         }
                     }
@@ -200,7 +201,7 @@ public class Bundler {
                             Map refMap = handlerPointer(pointer);
                             if(refMap.get("$ref") != null) {
                                 // if return is another updated $ref
-                                entry.setValue(handlerPointer(pointer).get("$ref"));
+                                entry.setValue(handlerPointer(pointer));
                             } else {
                                 // if return is inline object resolved.
                                 entry.setValue(refMap);
