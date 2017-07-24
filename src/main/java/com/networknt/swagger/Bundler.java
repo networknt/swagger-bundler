@@ -47,6 +47,10 @@ public class Bundler {
                 System.out.println("start resolve definitions second time ...");
                 resolveMap(def);
 
+                def = new HashMap<>(definitions);
+                System.out.println("start resolve definitions second time ...");
+                resolveMap(def);
+
                 // now replace definitions in map.
                 map.put("definitions", definitions);
 
