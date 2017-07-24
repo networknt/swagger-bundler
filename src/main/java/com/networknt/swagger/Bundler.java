@@ -29,16 +29,25 @@ public class Bundler {
                 String json = null;
                 Yaml yaml = new Yaml();
                 Map<String, Object> map = (Map<String, Object>)yaml.load(is);
-                // Now map contains everything in the swagger.yaml, create an empty
-                // definitions if it doesn't exist. definition is a static variable
-                // so that it is easy to use.
-                definitions = (Map<String, Object>)map.get("definitions");
-                if(definitions == null) {
-                    definitions = new HashMap<>();
-                    map.put("definitions", definitions);
-                }
+
+                // we have to work definitions as a separate map, otherwise, we will have
+                // concurrent access exception while iterate map and update definitions.
+                definitions = new HashMap<>((Map<String, Object>)map.get("definitions"));
                 // now let's handle the references.
                 resolveMap(map);
+                // now the definitions might contains some references that are not in definitions.
+                Map<String, Object> def = new HashMap<>(definitions);
+                System.out.println("start resolve definitions first time ...");
+                resolveMap(def);
+
+                def = new HashMap<>(definitions);
+                System.out.println("start resolve definitions second time ...");
+                resolveMap(def);
+
+                // now replace definitions in map.
+                map.put("definitions", definitions);
+
+
                 // convert the map back to json and output it.
                 json = mapper.writeValueAsString(map);
                 System.out.println(json);
@@ -53,18 +62,39 @@ public class Bundler {
     private static Map<String, Object> handlerPointer(String pointer) {
         Map<String, Object> result = new HashMap<>();
         if(pointer.startsWith("#")) {
-            // local reference
+            // There are two cases with local reference. 1, original in
+            // local reference and it has path of "definitions" or 2, local reference
+            // that extracted from reference file with reference to an object directly.
             String refKey = pointer.substring(pointer.lastIndexOf("/") + 1);
             //System.out.println("refKey = " + refKey);
-            Map<String, Object> refMap = (Map<String, Object>)definitions.get(refKey);
-            if(isRefMapObject(refMap)) {
-                // resolve any remote references in refMap.
-                resolveExternalRef(refMap);
+            if(pointer.contains("definitions")) {
+                // if the $ref is an object, keep it that way and if $ref is not an object, make it inline
+                // and remove it from definitions.
+                Map<String, Object> refMap = (Map<String, Object>)definitions.get(refKey);
+                if(refMap == null) {
+                    System.out.println("Could not find reference in definitions for key " + refKey);
+                    System.exit(0);
+                }
+                if(isRefMapObject(refMap)) {
+                    result.put("$ref", pointer);
+                } else {
+                    result = refMap;
+                }
             } else {
-                System.out.println("Only Object can be defined in definitions section");
-                System.exit(0);
+                // This is something extracted from extenal file and the reference is still local.
+                // need to look up for all reference files in order to find it.
+                Map<String, Object> refMap = null;
+                for (Map<String, Object> r: references.values()) {
+                    refMap = (Map<String, Object>)r.get(refKey);
+                    if(refMap != null) break;
+                }
+                if(isRefMapObject(refMap)) {
+                    definitions.put(refKey, refMap);
+                    result.put("$ref", "#/definitions/" + refKey);
+                } else {
+                    result = refMap;
+                }
             }
-            result.put("$ref", pointer);
         } else {
             // external reference and it must be a relative url
             Map<String, Object> refs = loadRef(pointer.substring(0, pointer.indexOf("#")));
@@ -72,7 +102,10 @@ public class Bundler {
             //System.out.println("refKey = " + refKey);
             Map<String, Object> refMap = (Map<String, Object>)refs.get(refKey);
             // now need to resolve the internal references in refMap.
-            resolveLocalRef(refMap, refs);
+            if(refMap == null) {
+                System.out.println("Could not find reference in external file for pointer " + pointer);
+                System.exit(0);
+            }
             // check if the refMap type is object or not.
             if(isRefMapObject(refMap)) {
                 // add to definitions
@@ -124,71 +157,15 @@ public class Bundler {
         return result;
     }
 
-    private static void resolveLocalRef(Map<String, Object> refMap, Map<String, Object> refs) {
-        boolean isObject = false;
-        for(Map.Entry<String, Object> entryEle: refMap.entrySet()) {
-            //System.out.println("key = " + entryEle.getKey() + " value = " + entryEle.getValue());
-            if("type".equals(entryEle.getKey()) && "object".equals(entryEle.getValue())) {
-                isObject = true;
-                continue;
-            }
-            if("properties".equals(entryEle.getKey()) && isObject) {
-                Map<String, Object> props = (Map<String, Object>)entryEle.getValue();
-                for(Map.Entry<String, Object> entryProp: props.entrySet()) {
-                    //System.out.println("key = " + entryProp.getKey() + " value = " + entryProp.getValue());
-                    String key = entryProp.getKey();
-                    Map<String, Object> pointers = (Map<String, Object>)entryProp.getValue();
-                    for(Map.Entry<String, Object> entryPointer: pointers.entrySet()) {
-                        //System.out.println("key = " + entryPointer.getKey() + " value = " + entryPointer.getValue());
-                        if("$ref".equals(entryPointer.getKey())) {
-                            String pointer = (String)entryPointer.getValue();
-                            String refKey = pointer.substring(2);
-                            //System.out.println("refKey = " + refKey);
-                            entryProp.setValue(refs.get(refKey));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private static void resolveExternalRef(Map<String, Object> refMap) {
-        boolean isObject = false;
-        for(Map.Entry<String, Object> entryEle: refMap.entrySet()) {
-            //System.out.println("key = " + entryEle.getKey() + " value = " + entryEle.getValue());
-            if("type".equals(entryEle.getKey()) && "object".equals(entryEle.getValue())) {
-                isObject = true;
-                continue;
-            }
-            if("properties".equals(entryEle.getKey()) && isObject) {
-                Map<String, Object> props = (Map<String, Object>)entryEle.getValue();
-                for(Map.Entry<String, Object> entryProp: props.entrySet()) {
-                    //System.out.println("key = " + entryProp.getKey() + " value = " + entryProp.getValue());
-                    String key = entryProp.getKey();
-                    Map<String, Object> pointers = (Map<String, Object>)entryProp.getValue();
-                    for(Map.Entry<String, Object> entryPointer: pointers.entrySet()) {
-                        //System.out.println("key = " + entryPointer.getKey() + " value = " + entryPointer.getValue());
-                        if("$ref".equals(entryPointer.getKey())) {
-                            String pointer = (String)entryPointer.getValue();
-                            //System.out.println("pointer = " + pointer);
-                            String refKey = pointer.substring(pointer.lastIndexOf("#/") + 2);
-                            //System.out.println("refKey = " + refKey);
-                            Map<String, Object> refs = loadRef(pointer.substring(0, pointer.indexOf("#")));
-                            entryProp.setValue(refs.get(refKey));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     /**
      * It deep iterate a map object and looking for "$ref" and handle it.
      * @param map the map of swagger.yaml
      */
     public static void resolveMap(Map<String, Object> map) {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
+            String key = entry.getKey();
             Object value = entry.getValue();
+            System.out.println("resolveMap key = " + key + " value = " + value);
             if (value instanceof Map) {
                 // check if this map is $ref, it should be size = 1
                 if (((Map) value).size() == 1) {
@@ -197,16 +174,9 @@ public class Bundler {
                         String k = (String)i.next();
                         if("$ref".equals(k)) {
                             String pointer = (String)((Map)value).get(k);
-                            //System.out.println("pointer = " + pointer);
+                            System.out.println("pointer = " + pointer);
                             Map refMap = handlerPointer(pointer);
-                            if(refMap.get("$ref") != null) {
-                                // if return is another updated $ref
-                                entry.setValue(handlerPointer(pointer));
-                            } else {
-                                // if return is inline object resolved.
-                                entry.setValue(refMap);
-                                continue;
-                            }
+                            entry.setValue(refMap);
                         }
                     }
                 }
