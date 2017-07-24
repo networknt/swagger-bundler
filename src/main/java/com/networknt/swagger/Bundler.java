@@ -32,7 +32,10 @@ public class Bundler {
 
                 // we have to work definitions as a separate map, otherwise, we will have
                 // concurrent access exception while iterate map and update definitions.
-                definitions = new HashMap<>((Map<String, Object>)map.get("definitions"));
+                definitions = new HashMap<>();
+                if(map.get("definitions") != null) {
+                    definitions.putAll((Map<String, Object>)map.get("definitions"));
+                }
                 // now let's handle the references.
                 resolveMap(map);
                 // now the definitions might contains some references that are not in definitions.
