@@ -56,8 +56,11 @@ public class Bundler {
 
 
                 // convert the map back to json and output it.
-                json = mapper.writeValueAsString(map);
-                System.out.println(json);
+                System.out.println("write bundled file to swagger.json ... same folder as the swagger.yaml input file...");
+                json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(map);
+
+                // write the output to swagger.json
+                Files.write(Paths.get(argv[0], "swagger.json"), json.getBytes());
             } catch (Exception e) {
                 e.printStackTrace();
             }
