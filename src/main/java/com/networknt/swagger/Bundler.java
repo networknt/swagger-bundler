@@ -138,7 +138,7 @@ public class Bundler {
     private static boolean isRefMapObject(Map<String, Object> refMap) {
         boolean result = false;
         for(Map.Entry<String, Object> entry: refMap.entrySet()) {
-            if("type".equals(entry.getKey()) && "object".equals(entry.getValue())) {
+            if("type".equals(String.valueOf(entry.getKey())) && "object".equals(String.valueOf(entry.getValue()))) {
                 result = true;
             }
         }
@@ -173,7 +173,7 @@ public class Bundler {
      */
     public static void resolveMap(Map<String, Object> map) {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
-            String key = entry.getKey();
+            String key = String.valueOf(entry.getKey());
             Object value = entry.getValue();
             System.out.println("resolveMap key = " + key + " value = " + value);
             if (value instanceof Map) {

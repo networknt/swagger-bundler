@@ -4,7 +4,7 @@
   <groupId>com.networknt</groupId>
   <artifactId>swagger-bundler</artifactId>
   <name>SwaggerBundler</name>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
   <description>A bundler utlity for swagger files</description>
   <url>https://github.com/networknt/swagger-bundler</url>
   <issueManagement>
