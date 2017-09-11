@@ -49,6 +49,7 @@
         </includes>
       </testResource>
     </testResources>
+    <finalName>${project.artifactId}</finalName>
     <plugins>
       <plugin>
         <groupId>org.sonatype.plugins</groupId>
