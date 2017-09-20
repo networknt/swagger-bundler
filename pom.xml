@@ -19,7 +19,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.networknt</groupId>
     <artifactId>swagger-bundler</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
     <description>A bundler utlity for swagger files</description>
     <url>https://github.com/networknt/swagger-bundler</url>
     <name>SwaggerBundler</name>

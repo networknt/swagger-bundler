@@ -17,11 +17,17 @@ public class Bundler {
     static Map<String, Map<String, Object>> references = new ConcurrentHashMap<>();
     static String folder = null;
     static Map<String, Object> definitions = null;
+    static boolean debug = false; 
 
     public static void main(String ... argv) {
-        //System.out.println("argv[0] = " + argv[0]);
+    	
+    		// check if debug output is requested
+    		String isDebug = System.getProperty("debugOutput");
+    		debug = (isDebug != null) && (isDebug.equals("")) ? true : false;
+    	
         if(argv[0] != null) {
             folder = argv[0];
+            System.out.println("Bundling API definition in folder: " + folder);
             // The input parameter is the folder that contains swagger.yaml and
             // this folder will be the base path to calculate remote references.
             Path path = Paths.get(argv[0], "swagger.yaml");
@@ -40,15 +46,18 @@ public class Bundler {
                 resolveMap(map);
                 // now the definitions might contains some references that are not in definitions.
                 Map<String, Object> def = new HashMap<>(definitions);
-                System.out.println("start resolve definitions first time ...");
+                if(debug)
+                		System.out.println("start resolve definitions first time ...");
                 resolveMap(def);
 
                 def = new HashMap<>(definitions);
-                System.out.println("start resolve definitions second time ...");
+                if(debug)
+                		System.out.println("start resolve definitions second time ...");
                 resolveMap(def);
 
                 def = new HashMap<>(definitions);
-                System.out.println("start resolve definitions second time ...");
+                if(debug)
+                		System.out.println("start resolve definitions second time ...");
                 resolveMap(def);
 
                 // now replace definitions in map.
@@ -56,7 +65,8 @@ public class Bundler {
 
 
                 // convert the map back to json and output it.
-                System.out.println("write bundled file to swagger.json ... same folder as the swagger.yaml input file...");
+                if(debug)
+                		System.out.println("write bundled file to swagger.json ... same folder as the swagger.yaml input file...");
                 json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(map);
 
                 // write the output to swagger.json
@@ -65,8 +75,10 @@ public class Bundler {
                 e.printStackTrace();
             }
         } else {
-            System.out.println("You must pass in a folder to a yaml file!");
+            System.out.println("ERROR: You must pass in a folder to a yaml file!");
         }
+        
+        System.out.println("Bundle complete...");
     }
 
     private static Map<String, Object> handlerPointer(String pointer) {
@@ -82,7 +94,7 @@ public class Bundler {
                 // and remove it from definitions.
                 Map<String, Object> refMap = (Map<String, Object>)definitions.get(refKey);
                 if(refMap == null) {
-                    System.out.println("Could not find reference in definitions for key " + refKey);
+                    System.out.println("ERROR: Could not find reference in definitions for key " + refKey);
                     System.exit(0);
                 }
                 if(isRefMapObject(refMap)) {
@@ -113,7 +125,7 @@ public class Bundler {
             Map<String, Object> refMap = (Map<String, Object>)refs.get(refKey);
             // now need to resolve the internal references in refMap.
             if(refMap == null) {
-                System.out.println("Could not find reference in external file for pointer " + pointer);
+                System.out.println("ERROR: Could not find reference in external file for pointer " + pointer);
                 System.exit(0);
             }
             // check if the refMap type is object or not.
@@ -175,7 +187,8 @@ public class Bundler {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             String key = String.valueOf(entry.getKey());
             Object value = entry.getValue();
-            System.out.println("resolveMap key = " + key + " value = " + value);
+            if(debug)
+            		System.out.println("resolveMap key = " + key + " value = " + value);
             if (value instanceof Map) {
                 // check if this map is $ref, it should be size = 1
                 if (((Map) value).size() == 1) {
@@ -184,7 +197,8 @@ public class Bundler {
                         String k = (String)i.next();
                         if("$ref".equals(k)) {
                             String pointer = (String)((Map)value).get(k);
-                            System.out.println("pointer = " + pointer);
+                            if(debug)
+                            		System.out.println("pointer = " + pointer);
                             Map refMap = handlerPointer(pointer);
                             entry.setValue(refMap);
                         }
@@ -209,7 +223,6 @@ public class Bundler {
                         String k = (String)j.next();
                         if("$ref".equals(k)) {
                             String pointer = (String)((Map)list.get(i)).get(k);
-                            //System.out.println("pointer = " + pointer);
                             list.set(i, handlerPointer(pointer));
                         }
                     }

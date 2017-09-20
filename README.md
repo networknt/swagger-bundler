@@ -65,13 +65,16 @@ are in the right path.
 ### Use it as Java utility
 
 ```
-java -jar target/swagger-bundler.jar [folder of swagger.yaml]
+java -jar target/swagger-bundler.jar <folder of swagger.yaml>
+
+# to visualize debug message during the bundling process, use the utility with the debugOutput flag
+java -DdebugOutput -jar target/swagger-bundler.jar  <folder of swagger.yaml>
+
 ```
 
 ### Use it in IDE
 
-Another way to run the bundler is from IDE. Just set the parameter and you can easily
-debug into it.
+Another way to run the bundler is from an IDE. Just set the folder of the swagger.yaml file as a program argument and you can easily debug into it.
 
 ### Use Docker
 
